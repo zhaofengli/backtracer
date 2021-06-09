@@ -1,30 +1,23 @@
 use alloc::borrow::Cow;
-use alloc::string::String;
-
-use addr2line::Context;
 
 use core::u32;
 
-pub fn resolve(
-    ctxt: Option<&Context>,
+use addr2line::Context;
+use addr2line::gimli::Reader;
+
+pub fn resolve<R: Reader>(
+    ctxt: Option<&Context<R>>,
     offset: u64,
     addr: *mut u8,
-    cb: &mut dyn FnMut(&super::Symbol),
+    cb: &mut dyn FnMut(&super::Symbol<R>),
 ) -> Result<(), addr2line::gimli::read::Error> {
     let addr = (addr as u64 - offset) as usize;
 
     // Try to resolve an address within a context:
     let (file, line, fn_name): (
-        Option<String>,
-        Option<u64>,
-        Option<
-            addr2line::FunctionName<
-                addr2line::gimli::EndianReader<
-                    addr2line::gimli::RunTimeEndian,
-                    alloc::rc::Rc<[u8]>,
-                >,
-            >,
-        >,
+        Option<&str>,
+        Option<u32>,
+        Option<addr2line::FunctionName<R>>,
     ) = ctxt.map_or_else(
         || (None, None, None),
         |ctxt| {
@@ -57,31 +50,20 @@ pub fn resolve(
     Ok(cb(&sym))
 }
 
-pub struct Symbol {
+pub struct Symbol<'a, R: Reader> {
     addr: usize,
-    file: Option<String>,
-    line: Option<u64>,
-    fn_name: Option<
-        addr2line::FunctionName<
-            addr2line::gimli::EndianReader<addr2line::gimli::RunTimeEndian, alloc::rc::Rc<[u8]>>,
-        >,
-    >,
+    file: Option<&'a str>,
+    line: Option<u32>,
+    fn_name: Option<addr2line::FunctionName<R>>,
 }
 
-impl Symbol {
+impl<R: Reader> Symbol<'_, R> {
     fn new(
         addr: usize,
-        file: Option<String>,
-        line: Option<u64>,
-        fn_name: Option<
-            addr2line::FunctionName<
-                addr2line::gimli::EndianReader<
-                    addr2line::gimli::RunTimeEndian,
-                    alloc::rc::Rc<[u8]>,
-                >,
-            >,
-        >,
-    ) -> Symbol {
+        file: Option<&str>,
+        line: Option<u32>,
+        fn_name: Option<addr2line::FunctionName<R>>,
+    ) -> Symbol<R> {
         Symbol {
             addr,
             file,
@@ -103,12 +85,6 @@ impl Symbol {
     }
 
     pub fn lineno(&self) -> Option<u32> {
-        self.line.and_then(|l| {
-            if l > (u32::MAX as u64) {
-                None
-            } else {
-                Some(l as u32)
-            }
-        })
+        self.line
     }
 }

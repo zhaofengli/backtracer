@@ -19,4 +19,13 @@ A library to acquire a stack trace (backtrace) at runtime in a no-std Rust progr
 cfg-if = "0.1"
 x86 = "0.32.0"
 log = "0.4"
-addr2line = { git = "https://github.com/gz/addr2line.git", branch = "patch-1", default-features = false, features = ["alloc", "rustc-demangle"] }
+
+[dependencies.addr2line]
+version = "0.14.1"
+default-features = false
+features = ["rustc-demangle"]
+
+[dependencies.gimli]
+version = "0.23.0"
+default-features = false
+features = ["read", "fallible-iterator", "endian-reader"]

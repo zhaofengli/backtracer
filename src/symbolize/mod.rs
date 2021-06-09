@@ -3,6 +3,8 @@ use alloc::str;
 
 use core::fmt;
 
+use addr2line::gimli::Reader;
+
 mod freestanding;
 use self::freestanding::resolve as resolve_imp;
 use self::freestanding::Symbol as SymbolImp;
@@ -37,8 +39,8 @@ use self::freestanding::Symbol as SymbolImp;
 ///     });
 /// }
 /// ```
-pub fn resolve<F: FnMut(&Symbol)>(
-    ctxt: Option<&addr2line::Context>,
+pub fn resolve<F: FnMut(&Symbol<R>), R: Reader>(
+    ctxt: Option<&addr2line::Context<R>>,
     offset: u64,
     addr: *mut u8,
     mut cb: F,
@@ -55,11 +57,11 @@ pub fn resolve<F: FnMut(&Symbol)>(
 /// A symbol can give contextual information about a function, for example the
 /// name, filename, line number, precise address, etc. Not all information is
 /// always available in a symbol, however, so all methods return an `Option`.
-pub struct Symbol {
-    inner: SymbolImp,
+pub struct Symbol<'a, R: Reader> {
+    inner: SymbolImp<'a, R>,
 }
 
-impl Symbol {
+impl<R: Reader> Symbol<'_, R> {
     /// Returns the name of this function.
     ///
     /// The returned structure can be used to query various properties about the
@@ -97,7 +99,7 @@ impl Symbol {
     }
 }
 
-impl fmt::Debug for Symbol {
+impl<R: Reader> fmt::Debug for Symbol<'_, R> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut d = f.debug_struct("Symbol");
         if let Some(name) = self.name() {
